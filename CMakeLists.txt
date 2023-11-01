@@ -44,6 +44,14 @@ endif ()
 #lower case needed to identify the right hermitfile-parser's "Hermitfile.$CMAKE_BUILD_TYPE_LOWER" file 
 string(TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_LOWER)
 
+#if tracing wasn't specifed set var to 0
+if(NOT HERMIT_LOGGING_ON)
+    set(HERMIT_LOGGING_ON 0)
+endif()
+
+#pass along the var
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHERMIT_LOGGING_ON=${HERMIT_LOGGING_ON}")
+
 if (NOT DEFINED WAMR_BUILD_INTERP)
   # Enable Interpreter by default
   set (WAMR_BUILD_INTERP 1)

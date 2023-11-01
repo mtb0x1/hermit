@@ -23,8 +23,10 @@ static const void *
 app_instance_main(wasm_module_inst_t module_inst, int app_argc, char *app_argv[])
 {
     const char *exception;
-
+    const char* function_name = "wamr.c::app_instance_main";
+    log_event(function_name,"stepping into wasm_application_execute_main.");
     wasm_application_execute_main(module_inst, app_argc, app_argv);
+    log_event(function_name,"wasm_application_execute_main done.");
     if ((exception = wasm_runtime_get_exception(module_inst)))
         printf("%s\n", exception);
     return exception;
@@ -33,10 +35,13 @@ app_instance_main(wasm_module_inst_t module_inst, int app_argc, char *app_argv[]
 static const void *
 app_instance_func(wasm_module_inst_t module_inst, int app_argc, char *app_argv[], const char *func_name)
 {
+    const char* function_name = "wamr.c::app_instance_func";
+    log_event(function_name,"stepping into wasm_application_execute_func.");
     wasm_application_execute_func(module_inst, func_name, app_argc - 1,
                                   app_argv + 1);
     /* The result of wasm function or exception info was output inside
        wasm_application_execute_func(), here we don't output them again. */
+    log_event(function_name,"wasm_application_execute_func done.");
     return wasm_runtime_get_exception(module_inst);
 }
 
@@ -246,6 +251,8 @@ dump_pgo_prof_data(wasm_module_inst_t module_inst, const char *path)
 
 int wamr(const char *wasm_file, int argc, char *argv[], const char *dir_list[], const uint32_t dir_list_size, const char *env_list[], const uint32_t env_list_size, const char *func_name)
 {
+    const char* function_name = "wamr.c::wamr";
+    log_event(function_name,"inside wamr.c.");
     int32 ret = -1;
     uint8 *wasm_file_buf = NULL;
     uint32 wasm_file_size;
@@ -331,6 +338,7 @@ int wamr(const char *wasm_file, int argc, char *argv[], const char *dir_list[], 
         printf("Init runtime environment failed.\n");
         return -1;
     }
+    log_event(function_name,"wasm_runtime_full_init done.");
 
 #if WASM_ENABLE_LOG != 0
     bh_log_set_verbose_level(log_verbose_level);
@@ -380,6 +388,7 @@ int wamr(const char *wasm_file, int argc, char *argv[], const char *dir_list[], 
         printf("%s\n", error_buf);
         goto fail2;
     }
+    log_event(function_name,"wasm_runtime_load done.");
 
 #if WASM_ENABLE_LIBC_WASI != 0
     wasm_runtime_set_wasi_args(wasm_module, dir_list, dir_list_size, NULL, 0,
@@ -398,11 +407,13 @@ int wamr(const char *wasm_file, int argc, char *argv[], const char *dir_list[], 
         printf("%s\n", error_buf);
         goto fail3;
     }
-
+    log_event(function_name,"wasm_runtime_instantiate done.");
+    
 #if WASM_CONFIGUABLE_BOUNDS_CHECKS != 0
     if (disable_bounds_checks)
     {
         wasm_runtime_set_bounds_checks(wasm_module_inst, false);
+        log_event(function_name,"wasm_runtime_set_bounds_checks done.");
     }
 #endif
 
@@ -411,6 +422,7 @@ int wamr(const char *wasm_file, int argc, char *argv[], const char *dir_list[], 
     {
         wasm_exec_env_t exec_env =
             wasm_runtime_get_exec_env_singleton(wasm_module_inst);
+        log_event(function_name,"wasm_runtime_get_exec_env_singleton done.");
         uint32_t debug_port;
         if (exec_env == NULL)
         {
@@ -418,6 +430,7 @@ int wamr(const char *wasm_file, int argc, char *argv[], const char *dir_list[], 
             goto fail4;
         }
         debug_port = wasm_runtime_start_debug_instance(exec_env);
+        log_event(function_name,"wasm_runtime_start_debug_instance done.");
         if (debug_port == 0)
         {
             printf("Failed to start debug instance\n");
@@ -429,19 +442,23 @@ int wamr(const char *wasm_file, int argc, char *argv[], const char *dir_list[], 
     ret = 0;
     if (func_name)
     {
+        log_event(function_name,"stepping into app_instance_func.");
         if (app_instance_func(wasm_module_inst, argc, argv, func_name))
         {
             /* got an exception */
             ret = 1;
         }
+        log_event(function_name,"app_instance_func done.");
     }
     else
     {
+        log_event(function_name,"stepping into app_instance_main.");
         if (app_instance_main(wasm_module_inst, argc, argv))
         {
             /* got an exception */
             ret = 1;
         }
+        log_event(function_name,"app_instance_main done.");
     }
 
 #if WASM_ENABLE_LIBC_WASI != 0
@@ -467,7 +484,7 @@ fail4:
 #endif
     /* destroy the module instance */
     wasm_runtime_deinstantiate(wasm_module_inst);
-
+    log_event(function_name,"wasm_runtime_deinstantiate done.");
 fail3:
     /* unload the module */
     wasm_runtime_unload(wasm_module);
@@ -487,6 +504,7 @@ fail1:
 
     /* destroy runtime environment */
     wasm_runtime_destroy();
+    log_event(function_name,"leaving wamr.c.");
 
     return ret;
 }

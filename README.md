@@ -125,6 +125,10 @@ or
 - Hermit-cli : `./benchmarks/bench-cli.sh` benchmark hermit cli, for more details check [docs](benchmarks/README.md).
 - Cli binaires produced by Hermit-cli : `./benchmarks/bench-artifacts.sh` benchmark produced binaries, for more details check [docs](benchmarks/README.md).
 
+## Logging
+
+Logging can be activated by adding `-DHERMIT_LOGGING_ON=1` in `./build_hermit.sh`, this will activate logging for both `Packing` and `Runtime`.
+
 ## Community
 
 Hermit shares the [Extism Discord](https://discord.gg/cx3usBCWnc). Join `#hermit` to discuss working with or building Hermit.

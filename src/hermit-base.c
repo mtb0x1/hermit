@@ -11,6 +11,7 @@
 
 #include "json.h"
 #include "wamr.h"
+#include "log.h"
 
 // cosmopolitan libc internal function
 char *GetProgramExecutableName(void);
@@ -147,6 +148,8 @@ static struct json_value_s *load_json_file(const char *json_path)
 
 static bool load_hermit_config(const char *hermit_json_path, list *dir_list, list *env_list, char **func_name)
 {
+    const char* function_name = "hermit-base.c::load_hermit_config";
+    log_event(function_name,"inside load_hermit_config.");
     const bool debug = getenv("HERMIT_DEBUG_BASE") != NULL;
     defer_free struct json_value_s *json = load_json_file(hermit_json_path);
     if (json == NULL)
@@ -334,11 +337,14 @@ static bool load_hermit_config(const char *hermit_json_path, list *dir_list, lis
             fprintf(stderr, "hermit-base: %s key: %.*s\n", ((config_index != HC_UNKNOWN) ? "found" : "unknown"), (int)name->string_size, name->string);
         }
     }
+    log_event(function_name,"leaving load_hermit_config.");
     return true;
 }
 
 int main(int argc, char *argv[])
 {
+    const char* function_name = "hermit-base.c::main";
+    log_event(function_name,"Running hermit-base.");
     // load config
     defer_list list dir_list = {0};
     defer_list list env_list = {0};
@@ -347,7 +353,7 @@ int main(int argc, char *argv[])
     {
         return 1;
     }
-
+    log_event(function_name,"Hermit config loaded.");
     // setup args
     int app_argc = argc >= 1 ? argc : 1;
     defer_free char **app_argv = malloc((app_argc + 1) * sizeof(char *));
@@ -355,6 +361,7 @@ int main(int argc, char *argv[])
     memcpy(&app_argv[1], &argv[1], sizeof(char *) * (argc - 1));
     app_argv[app_argc] = NULL;
     const char *wasm_file = app_argv[0];
+    log_event(function_name,"wasm content loaded into memory.");
 
     // WAMR backend using wasm_runtime_api
     return wamr(wasm_file, app_argc, app_argv, dir_list.arr, dir_list.size, env_list.arr, env_list.size, func_name);

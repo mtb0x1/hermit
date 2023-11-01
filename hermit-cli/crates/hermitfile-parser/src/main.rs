@@ -40,8 +40,25 @@ struct Hermitfile {
     #[serde(skip_serializing_if = "String::is_empty")]
     pub entrypoint: String,
 }
-
+#[inline(always)]
+fn log_event(_function_name: &str, _content: &str) {
+    #[cfg(feature = "logging")]
+    {
+        use chrono::prelude::*;
+        let now: DateTime<Local> = Local::now();
+        let milliseconds = now.format("%3f");
+        println!(
+            "{}.{:03} - {} - LOG::[{}]",
+            now.format("%Y-%m-%d %H:%M:%S"),
+            milliseconds,
+            _function_name,
+            _content
+        );
+    }
+}
 fn parse_hermitfile(hermitfile_path: &std::ffi::OsStr) -> Hermitfile {
+    const FUNCTION_NAME: &str = "main.rs::parse_hermitfile";
+    log_event(FUNCTION_NAME, "inside parse_hermitfile().");
     let hf = {
         let dockerfile = {
             let file = match std::fs::read(hermitfile_path) {
@@ -58,6 +75,7 @@ fn parse_hermitfile(hermitfile_path: &std::ffi::OsStr) -> Hermitfile {
             _ => panic!("{:?} has invalid Hermitfile syntax", &hermitfile_path),
         }
     };
+    log_event(FUNCTION_NAME, "Hertmitfile parsed as a DockerFile, done.");
 
     let mut hermitfile = Hermitfile::default();
     let mut env_map: HashMap<String, String> = HashMap::new();
@@ -114,7 +132,7 @@ fn parse_hermitfile(hermitfile_path: &std::ffi::OsStr) -> Hermitfile {
             _ => {}
         }
     }
-
+    log_event(FUNCTION_NAME, "Instruction extracted, done.");
     if hermitfile.from.is_empty() {
         panic!("Missing mandatory item: FROM");
     }
@@ -123,15 +141,20 @@ fn parse_hermitfile(hermitfile_path: &std::ffi::OsStr) -> Hermitfile {
         hermitfile.env.push(format!("{}={}", k, v));
     });
 
-    println!(
-        "{}",
-        serde_json::to_string_pretty(&hermitfile).expect("json serialized")
+    log_event(
+        FUNCTION_NAME,
+        &format!(
+            "{}",
+            serde_json::to_string_pretty(&hermitfile).expect("json serialized")
+        ),
     );
-
+    log_event(FUNCTION_NAME, "leaving parse_hermitfile().");
     hermitfile
 }
 
 fn create_hermit_executable(output_exe_name: &std::ffi::OsStr, hermit: Hermitfile) {
+    const FUNCTION_NAME: &str = "main.rs::create_hermit_executable";
+    log_event(FUNCTION_NAME, "inside create_hermit_executable().");
     // load executable to use as the hermit
     let (input_exe, input_perms) = {
         let (input_exe_size, mut input_exe_file) = {
@@ -168,6 +191,7 @@ fn create_hermit_executable(output_exe_name: &std::ffi::OsStr, hermit: Hermitfil
         println!("chmod +x {:?}", output_exe_name);
     }
     file.write_all(input_exe.as_slice()).unwrap();
+    log_event(FUNCTION_NAME, "executable created and initialized.");
 
     // append the zipped files
     let mut zip = zip::ZipWriter::new(file);
@@ -177,6 +201,7 @@ fn create_hermit_executable(output_exe_name: &std::ffi::OsStr, hermit: Hermitfil
         let hermit_json = serde_json::to_string_pretty(&hermit).expect("json serialized");
         zip.write_all(hermit_json.as_bytes()).unwrap();
     }
+    log_event(FUNCTION_NAME, "hermit.json appended.");
     {
         zip.start_file("main.wasm", zip::write::FileOptions::default())
             .unwrap();
@@ -186,7 +211,9 @@ fn create_hermit_executable(output_exe_name: &std::ffi::OsStr, hermit: Hermitfil
         };
         zip.write_all(&wasm).unwrap();
     }
+    log_event(FUNCTION_NAME, "wasm file appended.");
     zip.finish().unwrap();
+    log_event(FUNCTION_NAME, "leaving create_hermit_executable().");
 }
 
 #[derive(clap::Parser)]
@@ -212,11 +239,16 @@ impl HermitCliArgs {
 }
 
 fn main() {
+    const FUNCTION_NAME: &str = "main.rs::main";
+    log_event(FUNCTION_NAME, "Hermitfile parsing initiated.");
     // hack as wasi doesn't have a wayto set current directory
     if let Ok(input_wd) = std::env::var("PWD") {
         std::env::set_current_dir(input_wd).unwrap();
     }
     let options = HermitCliArgs::parse_args();
     let hermit = parse_hermitfile(&options.hermitfile_path);
+    log_event(FUNCTION_NAME, "Hermitfile parsing done.");
+    log_event(FUNCTION_NAME, "creating hermit executable.");
     create_hermit_executable(&options.output_path, hermit);
+    log_event(FUNCTION_NAME, "hermit executable created.");
 }
