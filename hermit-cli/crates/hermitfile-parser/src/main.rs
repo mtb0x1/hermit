@@ -195,15 +195,16 @@ fn create_hermit_executable(output_exe_name: &std::ffi::OsStr, hermit: Hermitfil
 
     // append the zipped files
     let mut zip = zip::ZipWriter::new(file);
+    let options = zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Stored);
     {
-        zip.start_file("hermit.json", zip::write::FileOptions::default())
+        zip.start_file("hermit.json", options)
             .unwrap();
         let hermit_json = serde_json::to_string_pretty(&hermit).expect("json serialized");
         zip.write_all(hermit_json.as_bytes()).unwrap();
     }
     log_event(FUNCTION_NAME, "hermit.json appended.");
     {
-        zip.start_file("main.wasm", zip::write::FileOptions::default())
+        zip.start_file("main.wasm", options)
             .unwrap();
         let wasm = match std::fs::read(&hermit.from) {
             Ok(wasm) => wasm,
